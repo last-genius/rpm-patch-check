@@ -1,0 +1,34 @@
+name: rpm-patch-check
+description: 'Github Action that verifies that all RPM patches are included in the spec file'
+
+on: [push]
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: List patches
+      shell: bash
+      run: "if test -d SOURCES; then find SOURCES -name '*.patch' -printf '%f\\n' > patches.list; fi"
+    - name: Check all patches are included in the spec file
+      shell: bash
+      run: |
+            if ! test -f patches.list; then
+              exit 0
+            fi
+            code=0
+            while read pattern; do
+              if ! grep -q "Patch[0-9]\\+: $pattern" SPECS/*.spec; then
+                  echo "SPEC file is missing patch '$pattern'"
+                  code=1
+              fi
+            done <patches.list
+            if [ "$code" -eq "0" ]; then
+                 echo "SPEC file includes all patches"
+            fi
+            exit $code
+
+branding:
+  icon: 'package'
+  color: 'red'
